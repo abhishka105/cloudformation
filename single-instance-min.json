@@ -1,0 +1,45 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  
+  "Description" : "AWS CloudFormation Minimal Apache+PHP stack using a single EC2 instance. **WARNING** This template creates an Amazon EC2 instance. You will be billed for the AWS resources used if you create a stack from this template.",
+    
+  "Resources" : {     
+      
+    "WebServerInstance": {  
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "ImageId" : "ami-099fe766",
+        "InstanceType"   : "t2.micro",
+        "SecurityGroups" : [ "Sree-Demo-SG-All-IP-Open" ],
+        "KeyName"        : "SreeDemoKey",
+        "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
+             "#!/bin/bash -xe\n",
+             "apt-get update && apt-get install -y debconf-utils apache2 git php libapache2-mod-php\n",
+             "apt-get -y install python-setuptools\n",
+             "mkdir aws-cfn-bootstrap-latest\n",
+             "curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz | tar xz -C aws-cfn-bootstrap-latest --strip-components 1\n",
+             "easy_install aws-cfn-bootstrap-latest\n",
+
+             "echo '<html><body>' > /var/www/html/index.php \n",
+             "echo '<h1>Hello From Apache+PHP Created by CFN Stack: ",{ "Ref" : "AWS::StackName" },"</h1>' >> /var/www/html/index.php \n",
+             "echo '<h2>Region: ",{ "Ref" : "AWS::Region" },"</h2>' >> /var/www/html/index.php \n",
+             "echo '<?php print date(\"g:i A l, F j Y.\");?>' >> /var/www/html/index.php \n",
+             "echo '</body></html>' >> /var/www/html/index.php \n",
+
+             "# Signal the status from cfn-init\n",
+             "/usr/local/bin/cfn-signal -e $? ",
+             "         --stack ", { "Ref" : "AWS::StackName" },
+             "         --resource WebServerInstance ",
+             "         --region ", { "Ref" : "AWS::Region" }, "\n"
+        ]]}}        
+      }   
+    } 
+  },
+  
+  "Outputs" : {
+    "WebsiteURL" : {
+      "Description" : "URL for the stack",
+            "Value" : { "Fn::Join" : ["", ["http://", { "Fn::GetAtt" : [ "WebServerInstance", "PublicDnsName" ]},"/index.php"]] }
+    }
+  }
+}
